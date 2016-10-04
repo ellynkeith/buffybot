@@ -36,13 +36,16 @@ def main():
     ## collapse list of lists into single list    
     all_lines = [lines for script in listLines for lines in script]  
 
+    ## create bigrams from processed text
     buffBGs = []
     for line in all_lines:
         bgs = list(ngrams(line, 2))
 
+        ## put all bigrams in single list
         for b in bgs:
             buffBGs.append(b)
 
+    ## starting from start sentence marker, generate text until end sentence marker reached
     seed = "<s>"
     while seed != "</s>":
         word = chooseWord(seed, buffBGs)
