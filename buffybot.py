@@ -11,6 +11,22 @@ def chooseWord(seed, bgrams):
 
     return words[0]
 
+def buffBigrams(list_text):
+    all_BGs = []
+    for line in list_text:
+        bgs = list(ngrams(line, 2))
+
+        ## put all bigrams in single list
+        for b in bgs:
+            all_BGs.append(b)
+    return all_BGs
+
+def chooseWordTrigrams(firstWord, secWord, TGs):
+    tri = [words[2] for words in TGs if words[0] == firstWord and words[1] == secWord]
+    random.shuffle(tri)
+
+    return tri[0]
+
 def main():
     path = "BUFFY/"
     listLines = []
@@ -37,20 +53,30 @@ def main():
     all_lines = [lines for script in listLines for lines in script]  
 
     ## create bigrams from processed text
-    buffBGs = []
-    for line in all_lines:
-        bgs = list(ngrams(line, 2))
-
-        ## put all bigrams in single list
-        for b in bgs:
-            buffBGs.append(b)
+    buffBGs = buffBigrams(all_lines)
 
     ## starting from start sentence marker, generate text until end sentence marker reached
-    seed = "<s>"
-    while seed != "</s>":
-        word = chooseWord(seed, buffBGs)
-        print(word, end=" ")
-        seed = word
+    # start = nextWord("<s>", buffBGs)
+    # start_0 = start
+    # print(start, end= " ")
+    # while start_0 != "</s>":
+    #     word = 
+
+    TGlist = []
+    for line in all_lines:
+        tgs = list(ngrams(line,3))
+
+        for t in tgs:
+            TGlist.append(t)
+
+    firstWord = chooseWord("<s>", buffBGs)
+    seed1 = "<s>"
+    seed2 = firstWord
+    print(firstWord, end = " ")
+    while seed2 != "</s>":
+        word = chooseWordTrigrams(seed1, seed2, TGlist)
+        print(word, end = " ")
+        seed1, seed2 = seed2, word
 
 main()
 
