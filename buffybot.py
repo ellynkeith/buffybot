@@ -41,7 +41,7 @@ def main():
     ## add start/end sentence tags 
         prepScript = []
         for line in script:
-            line = line.lower()
+ #           line = line.lower()
             line = line.split(" ")
             line.insert(0,"<s>")
             line.append("</s>")
@@ -51,16 +51,10 @@ def main():
 
     ## collapse list of lists into single list    
     all_lines = [lines for script in listLines for lines in script]  
+    print(all_lines[100])
 
     ## create bigrams from processed text
     buffBGs = buffBigrams(all_lines)
-
-    ## starting from start sentence marker, generate text until end sentence marker reached
-    # start = nextWord("<s>", buffBGs)
-    # start_0 = start
-    # print(start, end= " ")
-    # while start_0 != "</s>":
-    #     word = 
 
     TGlist = []
     for line in all_lines:
@@ -69,14 +63,24 @@ def main():
         for t in tgs:
             TGlist.append(t)
 
-    firstWord = chooseWord("<s>", buffBGs)
+    firstWord = chooseWord("<s>", TGlist)
     seed1 = "<s>"
     seed2 = firstWord
-    print(firstWord, end = " ")
+    sent = []
+    #print(firstWord, end = " ")
+    # sent.append(firstWord)
+    # while seed1 != "</s>":
+    #     word = chooseWord(seed1, buffBGs)
+    #     sent.append(word)
+    #     print(word, end=" ")
+    #     seed = word
+
     while seed2 != "</s>":
         word = chooseWordTrigrams(seed1, seed2, TGlist)
+        sent.append(word)
         print(word, end = " ")
         seed1, seed2 = seed2, word
+ 
 
 main()
 
