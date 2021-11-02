@@ -1,5 +1,5 @@
 ### buffybot
-N-gram based random text generator using lines from Buffy the Vampire Slayer.
+N-gram based random text generator using lines from Buffy the Vampire Slayer. (doesn't currently work because it's 5 years old and the corpus is long gone)
 
 ### choose_episode.py:
 for when you want to watch Buffy but don't know what episode to watch. Filter by season or search all.
@@ -12,6 +12,7 @@ Usage:
 ```
 
 #### TODO:
+* Rebuild corpus
 * Exclude seasons or episodes
 * Select based on main character, funny/sad rating
 
