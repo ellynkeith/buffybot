@@ -1,0 +1,144 @@
+1.	1-1 	10 Mar 97	Welcome to the Hellmouth
+2.	1-2 	10 Mar 97	The Harvest
+3.	1-3 	17 Mar 97	Witch
+4.	1-4 	25 Mar 97	Teacher's Pet
+5.	1-5 	31 Mar 97	Never Kill a Boy on the First Date
+6.	1-6 	07 Apr 97	The Pack
+7.	1-7 	14 Apr 97	Angel
+8.	1-8 	28 Apr 97	I, Robot... You, Jane
+9.	1-9 	05 May 97	The Puppet Show
+10.	1-10	12 May 97	Nightmares
+11.	1-11	19 May 97	Out of Mind, Out of Sight
+12.	1-12	02 Jun 97	Prophecy Girl
+13.	2-1 	15 Sep 97	When She Was Bad
+14.	2-2 	22 Sep 97	Some Assembly Required
+15.	2-3 	29 Sep 97	School Hard
+16.	2-4 	06 Oct 97	Inca Mummy Girl
+17.	2-5 	13 Oct 97	Reptile Boy
+18.	2-6 	27 Oct 97	Halloween
+19.	2-7 	03 Nov 97	Lie to Me
+20.	2-8 	10 Nov 97	The Dark Age
+21.	2-9 	17 Nov 97	What's My Line?: Part I
+22.	2-10	24 Nov 97	What's My Line?: Part II
+23.	2-11	08 Dec 97	Ted
+24.	2-12	12 Jan 98	Bad Eggs
+25.	2-13	19 Jan 98	Surprise
+26.	2-14	20 Jan 98	Innocence
+27.	2-15	27 Jan 98	Phases
+28.	2-16	10 Feb 98	Bewitched, Bothered and Bewildered
+29.	2-17	24 Feb 98	Passion
+30.	2-18	03 Mar 98	Killed by Death
+31.	2-19	28 Apr 98	I Only Have Eyes for You
+32.	2-20	05 May 98	Go Fish
+33.	2-21	12 May 98	Becoming: Part I
+34.	2-22	19 May 98	Becoming: Part II
+35.	3-1 	29 Sep 98	Anne
+36.	3-2 	06 Oct 98	Dead Man's Party
+37.	3-3 	13 Oct 98	Faith, Hope & Trick
+38.	3-4 	20 Oct 98	Beauty and the Beasts
+39.	3-5 	03 Nov 98	Homecoming
+40.	3-6 	10 Nov 98	Band Candy
+41.	3-7 	17 Nov 98	Revelations
+42.	3-8 	24 Nov 98	Lovers Walk
+43.	3-9 	08 Dec 98	The Wish
+44.	3-10	15 Dec 98	Amends
+45.	3-11	12 Jan 99	Gingerbread
+46.	3-12	19 Jan 99	Helpless
+47.	3-13	26 Jan 99	The Zeppo
+48.	3-14	09 Feb 99	Bad Girls
+49.	3-15	16 Feb 99	Consequences
+50.	3-16	23 Feb 99	Doppelgangland
+51.	3-17	16 Mar 99	Enemies
+52.	3-18	14 Apr 99	Earshot
+53.	3-19	04 May 99	Choices
+54.	3-20	11 May 99	The Prom
+55.	3-21	18 May 99	Graduation Day: Part I
+56.	3-22	13 Jul 99	Graduation Day: Part II
+57.	4-1 	05 Oct 99	The Freshman
+58.	4-2 	12 Oct 99	Living Conditions
+59.	4-3 	19 Oct 99	The Harsh Light of Day
+60.	4-4 	26 Oct 99	Fear, Itself
+61.	4-5 	02 Nov 99	Beer Bad
+62.	4-6 	09 Nov 99	Wild at Heart
+63.	4-7 	16 Nov 99	The Initiative
+64.	4-8 	23 Nov 99	Pangs
+65.	4-9 	30 Nov 99	Something Blue
+66.	4-10	14 Dec 99	Hush
+67.	4-11	18 Jan 00	Doomed
+68.	4-12	25 Jan 00	A New Man
+69.	4-13	08 Feb 00	The I in Team
+70.	4-14	15 Feb 00	Goodbye Iowa
+71.	4-15	22 Feb 00	This Year's Girl
+72.	4-16	29 Feb 00	Who Are You?
+73.	4-17	04 Apr 00	Superstar
+74.	4-18	25 Apr 00	Where the Wild Things Are
+75.	4-19	02 May 00	New Moon Rising
+76.	4-20	09 May 00	The Yoko Factor
+77.	4-21	16 May 00	Primeval
+78.	4-22	23 May 00	Restless
+79.	5-1 	26 Sep 00	Buffy vs. Dracula
+80.	5-2 	03 Oct 00	Real Me
+81.	5-3 	10 Oct 00	The Replacement
+82.	5-4 	17 Oct 00	Out of My Mind
+83.	5-5 	24 Oct 00	No Place Like Home
+84.	5-6 	07 Nov 00	Family
+85.	5-7 	14 Nov 00	Fool for Love
+86.	5-8 	21 Nov 00	Shadow
+87.	5-9 	28 Nov 00	Listening to Fear
+88.	5-10	19 Dec 00	Into the Woods
+89.	5-11	09 Jan 01	Triangle
+90.	5-12	23 Jan 01	Checkpoint
+91.	5-13	06 Feb 01	Blood Ties
+92.	5-14	13 Feb 01	Crush
+93.	5-15	20 Feb 01	I Was Made to Love You
+94.	5-16	27 Feb 01	The Body
+95.	5-17	17 Apr 01	Forever
+96.	5-18	24 Apr 01	Intervention
+97.	5-19	01 May 01	Tough Love
+98.	5-20	08 May 01	Spiral
+99.	5-21	15 May 01	The Weight of the World
+100.	5-22	22 May 01	The Gift
+101.	6-1 	02 Oct 01	Bargaining - Part 1
+102.	6-2 	02 Oct 01	Bargaining - Part 2
+103.	6-3 	09 Oct 01	After Life
+104.	6-4 	16 Oct 01	Flooded
+105.	6-5 	23 Oct 01	Life Serial
+106.	6-6 	30 Oct 01	All the Way
+107.	6-7 	06 Nov 01	Once More, with Feeling
+108.	6-8 	13 Nov 01	Tabula Rasa
+109.	6-9 	20 Nov 01	Smashed
+110.	6-10	27 Nov 01	Wrecked
+111.	6-11	08 Jan 02	Gone
+112.	6-12	29 Jan 02	Doublemeat Palace
+113.	6-13	05 Feb 02	Dead Things
+114.	6-14	12 Feb 02	Older and Far Away
+115.	6-15	26 Feb 02	As You Were
+116.	6-16	05 Mar 02	Hell's Bells
+117.	6-17	12 Mar 02	Normal Again
+118.	6-18	30 Apr 02	Entropy
+119.	6-19	07 May 02	Seeing Red
+120.	6-20	14 May 02	Villains
+121.	6-21	21 May 02	Two to Go
+122.	6-22	21 May 02	Grave
+123.	7-1 	24 Sep 02	Lessons
+124.	7-2 	01 Oct 02	Beneath You
+125.	7-3 	08 Oct 02	Same Time, Same Place
+126.	7-4 	15 Oct 02	Help
+127.	7-5 	22 Oct 02	Selfless
+128.	7-6 	05 Nov 02	Him
+129.	7-7 	12 Nov 02	Conversations with Dead People
+130.	7-8 	19 Nov 02	Sleeper
+131.	7-9 	26 Nov 02	Never Leave Me
+132.	7-10	17 Dec 02	Bring on the Night
+133.	7-11	07 Jan 03	Showtime
+134.	7-12	21 Jan 03	Potential
+135.	7-13	04 Feb 03	The Killer in Me
+136.	7-14	11 Feb 03	First Date
+137.	7-15	18 Feb 03	Get It Done
+138.	7-16	25 Feb 03	Storyteller
+139.	7-17	25 Mar 03	Lies My Parents Told Me
+140.	7-18	15 Apr 03	Dirty Girls
+141.	7-19	29 Apr 03	Empty Places
+142.	7-20	06 May 03	Touched
+143.	7-21	13 May 03	End of Days
+144.	7-22	20 May 03	Chosen
