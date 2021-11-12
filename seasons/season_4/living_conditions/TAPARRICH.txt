@@ -1,0 +1,10 @@
+(demon-speak) Teeka a-gol. U'ku a-gol mach'taga voka mil?
+(demon-speak) Teeka a-gol. U'ku a-gol mach'taga voka mil?
+(subtitled) There you are. Do you have any idea how much trouble you're in young lady?
+(demon-speak) U'ku nu kal'bich t'goli
+(subtitled) Don't take that tone with me.
+(demon-speak) Oova a-gol mach'ruga'te. Ga nu voca kla'tu ve'rada nich'to a-gol dachla-mil.
+(subtitled) When you stop acting that way. I can't tell you how much you've upset your mother.
+(demon-speak) T'nok! A-gol ku vach-t'gach boloch.
+(demon-speak) T'nok! A-gol ku vach-t'gach boloch.
+(subtitled) Enough. You're coming home.

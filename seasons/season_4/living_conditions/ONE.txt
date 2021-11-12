@@ -1,0 +1,8 @@
+(demon-speak) Mil sty'ga dir rach ulam.
+(demon-speak) Mil sty'ga dir rach ulam.
+(subtitled) She may be the one.
+(demon-speak) P'uvaq a-gol
+(subtitled) As you wish.
+(demon-speak) Gol ek bennum. Mil eko dir  rach ulam. 
+(demon-speak) Gol ek bennum. Mil eko dir  rach ulam. 
+(subtitled) We were correct. She is the one. 
