@@ -41,6 +41,59 @@ BUFFY_CHARACTERS = {
 }
 
 
+def parse_blockquote_format(blockquote_element, episode_num, episode_title):
+    """Parse the terrible Season 7 blockquote format"""
+    dialogue_data = []
+    current_scene = "Unknown"
+
+    # Get all child elements in order
+    all_elements = blockquote_element.find_all(['p', 'b', 'br'], recursive=False)
+
+    i = 0
+    while i < len(all_elements):
+        element = all_elements[i]
+
+        if element.name == 'b':
+            text = clean_text(element.get_text())
+
+            # Check if this looks like a character name
+            if is_valid_character(text):
+                character = text.upper()
+
+                # Look for dialogue in the next <p> tag
+                if i + 1 < len(all_elements) and all_elements[i + 1].name == 'p':
+                    dialogue_text = clean_text(all_elements[i + 1].get_text())
+
+                    # Skip if it's clearly stage direction
+                    if (dialogue_text and
+                            not dialogue_text.startswith('Cut to:') and
+                            not dialogue_text.startswith('INT.') and
+                            not dialogue_text.startswith('EXT.') and
+                            len(dialogue_text) > 5):
+
+                        dialogue = clean_dialogue(dialogue_text)
+                        if dialogue:
+                            dialogue_data.append({
+                                'episode_num': episode_num,
+                                'episode_title': episode_title,
+                                'scene': current_scene,
+                                'character': character,
+                                'dialogue': dialogue,
+                                'is_voiceover': 'VO' in text or 'VOICEOVER' in text
+                            })
+
+                i += 2  # Skip both the <b> and following <p>
+            else:
+                # Might be a scene marker
+                if any(word in text.lower() for word in ['ext.', 'int.', 'day', 'night']):
+                    current_scene = text[:50]
+                i += 1
+        else:
+            i += 1
+
+    return dialogue_data
+
+
 def parse_pre_format(pre_element, episode_num, episode_title):
     """Parse <pre> format transcripts"""
     dialogue_data = []
@@ -451,7 +504,10 @@ def parse_buffy_transcript(html_file):
 
     dialogue_data = []
 
-    if start_point.name == 'pre':
+    if start_point.name == 'blockquote':
+        dialogue_data = parse_blockquote_format(start_point, episode_number, episode_title)
+    elif start_point.name == 'pre':
+        # Handle pre formats
         dialogue_data = parse_pre_format(start_point, episode_number, episode_title)
     else:
         current_scene = "Unknown"
@@ -540,7 +596,7 @@ def parse_all_transcripts(html_files, sublist=None):
     print(f"Found {len(html_files)} HTML files to process...")
 
     for html_file in html_files:
-        if sublist and html_file.name not in sublist:
+        if sublist and html_file.name not in sublist.values():
             continue
         print(f"Parsing {html_file.name}...")
         # try:
@@ -625,10 +681,37 @@ def find_content_start(soup):
     return None
 
 
-def explore_data(episodes_df, dialogue_df):
+def explore_data():
     """
     Quick data exploration to verify parsing worked correctly.
     """
+    episodes_df = pd.read_csv('episodes.csv')
+    dialogue_df = pd.read_csv('dialogues.csv')
+
+    low_line_episodes = episodes_df[episodes_df['total_lines'] < 1000]
+    subset_dialogue = dialogue_df[dialogue_df['episode_num'].isin(low_line_episodes['episode_num'])]
+
+    print(f"Episodes with < 1000 lines: {len(low_line_episodes)}")
+    print(f"Dialogue lines from those episodes: {len(subset_dialogue)}")
+
+    # Save the subset
+    subset_dialogue.to_csv('low_line_episodes_dialogue.csv', index=False)
+    # Check if it's specific seasons or patterns
+    bins = [0, 12, 34, 56, 78, 99, 122, 144]
+    labels = [1, 2, 3, 4, 5, 6, 7]
+
+    low_line_episodes['season'] = pd.cut(
+        low_line_episodes['episode_num'].astype(int),
+        bins=bins,
+        labels=labels,
+        include_lowest=True
+    )
+    print("\n=== BY SEASON ===")
+    print(low_line_episodes.groupby('season')['total_lines'].agg(['count', 'mean']))
+
+    # Let's see what's going on with these low-line episodes
+    print("=== LOW LINE EPISODES ANALYSIS ===")
+    print(low_line_episodes[['episode_title', 'total_lines']].sort_values('total_lines'))
     print("=== EPISODE OVERVIEW ===")
     print(episodes_df.head())
 
@@ -642,50 +725,50 @@ def explore_data(episodes_df, dialogue_df):
     print(dialogue_df['scene'].value_counts().head())
 
 
+def debug_single_file(filename):
+    filepath = Path(transcript_dir) / filename
+    print(f"\n=== DEBUGGING {filename} ===")
+
+    episode_data = parse_buffy_transcript(filepath)
+
+    print(f"Episode: {episode_data['episode_title']}")
+    print(f"Dialogue lines found: {len(episode_data['dialogue'])}")
+
+    if len(episode_data['dialogue']) > 0:
+        print("Sample dialogue:")
+        for line in episode_data['dialogue'][:3]:
+            print(f"  {line['character']}: {line['dialogue'][:50]}...")
+    else:
+        print("❌ NO DIALOGUE FOUND!")
+
+    return episode_data
+
+
 if __name__ == "__main__":
-
     transcript_dir = Path('/Users/ellynkeith/PycharmProjects/buffybot/transcripts')
+    # test_files = ["001_trans.html", "013_trans.html", "079_trans.html", "123_trans.html"]
+    # for filename in test_files:
+    #     if (Path(transcript_dir) / filename).exists():
+    #         debug_single_file(filename)
+    # Test one file from each problematic season
+    test_files = {
+        1: "001_trans.html",  # Or whatever season 1 files look like
+        2: "013_trans.html",
+        5: "079_trans.html",
+        7: "123_trans.html"
+    }
 
-    # Test with just a few problematic files first
-    test_files = ['043_trans.html'] # '068_trans.html', '129_trans.html',
-    episodes_df = pd.read_csv('episodes.csv')
-    dialogue_df = pd.read_csv('dialogues.csv')
-
-    low_line_episode_nums = episodes_df[episodes_df['total_lines'] < 1000]['episode_num']
-    subset_dialogue = dialogue_df[dialogue_df['episode_num'].isin(low_line_episode_nums)]
-
-    print(f"Episodes with < 1000 lines: {len(low_line_episode_nums)}")
-    print(f"Dialogue lines from those episodes: {len(subset_dialogue)}")
-
-    # Save the subset
-    subset_dialogue.to_csv('low_line_episodes_dialogue.csv', index=False)
-
-    # Let's see what's going on with these low-line episodes
-    print("=== LOW LINE EPISODES ANALYSIS ===")
-    print(low_line_episode_nums[['episode_num', 'episode_title', 'total_lines', 'filename']].sort_values('total_lines'))
-
-    # Check if it's specific seasons or patterns
-    low_line_episode_nums['season'] = low_line_episode_nums['episode_num'].astype(str).str[:1]
-    print("\n=== BY SEASON ===")
-    print(low_line_episode_nums.groupby('season')['total_lines'].agg(['count', 'mean']))
-
-    # # Save the subset
-    # subset_dialogue.to_csv('low_line_episodes_dialogue.csv', index=False)
-    # rerun = eps.loc[eps['total_lines'] < 1000, 'filename'].tolist()
-    # # print("🧪 Testing hybrid parsing on sample files...")
-    # episodes_df, dialogues_df = parse_all_transcripts(transcript_dir, rerun)
-    #
-    # episodes_df = pd.concat([eps, episodes_df], ignore_index=True)
-    #
-    # # if len(dialogues_df) > 0:
-    # #     print("\n📋 Sample results:")
-    # #     print(dialogues_df[['character', 'dialogue']].head(10))
-    #
-    #     # Save test results
+    episodes_df, dialogues_df = parse_all_transcripts(transcript_dir, test_files)
     # episodes_df.to_csv('episodes_new.csv', index=False)
     # dialogues_df.to_csv('dialogues_new.csv', index=False)
-    # print("\n💾 Test results saved!")
-    # else:
-    #     print("❌ No dialogue extracted. Check your API key and setup.")
+
+    # for season, filename in test_files.items():
+    #     if (Path(transcript_dir) / filename).exists():
+    #         quick_format_check(filename)
+
+    # Test with just a few problematic files first
+    # test_files = ['043_trans.html'] # '068_trans.html', '129_trans.html',
+
+
 
 
