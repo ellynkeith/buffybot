@@ -7,8 +7,6 @@ import json
 import time
 from typing import List, Dict
 
-openai.api_key = "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"
-
 BUFFY_CHARACTERS = {
     # Main characters
     'BUFFY', 'WILLOW', 'XANDER', 'GILES', 'CORDELIA', 'OZ', 'ANGEL', 'SPIKE', 'TARA',
@@ -46,8 +44,8 @@ def parse_blockquote_format(blockquote_element, episode_num, episode_title):
     dialogue_data = []
     current_scene = "Unknown"
 
-    # Get all child elements in order
-    all_elements = blockquote_element.find_all(['p', 'b', 'br'], recursive=False)
+    # Get elements recursively
+    all_elements = blockquote_element.find_all(['p', 'b', 'br'])
 
     i = 0
     while i < len(all_elements):
@@ -55,22 +53,22 @@ def parse_blockquote_format(blockquote_element, episode_num, episode_title):
 
         if element.name == 'b':
             text = clean_text(element.get_text())
+            print(f"DEBUG: Found <b> tag: '{text}'")
 
             # Check if this looks like a character name
             if is_valid_character(text):
                 character = text.upper()
+                print(f"DEBUG: Valid character: {character}")
 
-                # Look for dialogue in the next <p> tag
-                if i + 1 < len(all_elements) and all_elements[i + 1].name == 'p':
-                    dialogue_text = clean_text(all_elements[i + 1].get_text())
+                # The dialogue might be in the parent <p> tag, after this <b> tag
+                parent_p = element.find_parent('p')
+                if parent_p:
+                    # Get all text from the <p> tag, excluding the <b> character name
+                    full_text = parent_p.get_text()
+                    # Remove the character name from the beginning
+                    dialogue_text = full_text.replace(text, '', 1).strip()
 
-                    # Skip if it's clearly stage direction
-                    if (dialogue_text and
-                            not dialogue_text.startswith('Cut to:') and
-                            not dialogue_text.startswith('INT.') and
-                            not dialogue_text.startswith('EXT.') and
-                            len(dialogue_text) > 5):
-
+                    if dialogue_text and len(dialogue_text) > 3:
                         dialogue = clean_dialogue(dialogue_text)
                         if dialogue:
                             dialogue_data.append({
@@ -82,15 +80,9 @@ def parse_blockquote_format(blockquote_element, episode_num, episode_title):
                                 'is_voiceover': 'VO' in text or 'VOICEOVER' in text
                             })
 
-                i += 2  # Skip both the <b> and following <p>
-            else:
-                # Might be a scene marker
-                if any(word in text.lower() for word in ['ext.', 'int.', 'day', 'night']):
-                    current_scene = text[:50]
-                i += 1
-        else:
-            i += 1
+        i += 1
 
+    print(f"DEBUG: Total dialogue lines found: {len(dialogue_data)}")
     return dialogue_data
 
 
@@ -134,237 +126,6 @@ def parse_pre_format(pre_element, episode_num, episode_title):
 
     return dialogue_data
 
-
-def is_problematic_chunk(text: str) -> bool:
-    """Identify chunks that need LLM cleaning"""
-    problematic_indicators = [
-        # Mixed dialogue and stage directions
-        len(re.findall(r'[A-Z]+:', text)) > 1,  # Multiple speakers in one block
-        # HTML artifacts
-        '&' in text and ';' in text,  # HTML entities
-        '<' in text or '>' in text,  # Leftover HTML tags
-        # Transcriber notes
-        'transcriber' in text.lower(),
-        'note:' in text.lower(),
-        # Stage directions mixed with dialogue
-        '(' in text and ')' in text and ':' in text,
-        # Very long single "dialogue" lines (probably mixed content)
-        len(text) > 500,
-    ]
-
-    return any(problematic_indicators)
-
-
-def llm_clean_chunk(text: str, episode_title: str) -> List[Dict]:
-    """Use LLM to clean a problematic text chunk"""
-
-    prompt = f"""Extract dialogue from this Buffy the Vampire Slayer transcript chunk.
-
-Episode: {episode_title}
-
-Rules:
-1. Extract ONLY character dialogue. Character's name may be in all caps or capitalized, ie 'BUFFY: Hey Giles, what's up?' or 'Buffy: Hey Giles...'
-2. Format as JSON array: [{{"character": "BUFFY", "dialogue": "Hey Giles, what's up?"}}, ...]
-3. Remove stage directions, transcriber notes, HTML artifacts
-4. Remove parentheticals from start of dialogue like "(to Xander)" 
-5. Split multiple speakers into separate entries
-6. Keep character names in ALL CAPS
-7. If no dialogue found, return empty array []
-
-Valid characters include: BUFFY, WILLOW, XANDER, GILES, ANGEL, SPIKE, CORDELIA, OZ, TARA, ANYA, RILEY, JOYCE, DAWN, FAITH, WESLEY, etc.
-
-Text chunk:
-{text}
-
-Return only valid JSON array:"""
-
-    try:
-        response = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=1000
-        )
-
-        response_text = response.choices[0].message.content.strip()
-
-        # Try to parse JSON response
-        try:
-            dialogue_list = json.loads(response_text)
-            if isinstance(dialogue_list, list):
-                return dialogue_list
-        except json.JSONDecodeError:
-            print(f"Warning: LLM returned invalid JSON: {response_text[:100]}...")
-
-        return []  # Return empty if parsing fails
-
-    except Exception as e:
-        print(f"Error calling LLM: {e}")
-        return []
-
-def hybrid_parse_transcript(html_file):
-    """Hybrid parsing: HTML first, then LLM for problematic chunks"""
-
-    # Start with basic HTML parsing
-    with open(html_file, 'r', encoding='utf-8', errors='ignore') as f:
-        content = f.read()
-
-    soup = BeautifulSoup(content, 'html.parser')
-
-    # Extract episode metadata (same as before)
-    title_tag = soup.find('title')
-    if title_tag:
-        title_text = title_tag.get_text()
-        episode_number = html_file.stem.split('_')[0]
-        episode_match = re.search(r'#(\d+):?\s*"?([^"]*)"?', title_text)
-        if episode_match:
-            episode_title = episode_match.group(2).strip()
-        else:
-            episode_title = title_text.replace(" - Buffy Episode Transcript", "").strip()
-    else:
-        episode_title = "Unknown"
-
-    # Get raw text chunks
-    start_point = find_content_start(soup)
-    if not start_point:
-        return {
-            'episode_num': episode_number,
-            'episode_title': episode_title,
-            'writer': 'Unknown',
-            'air_date': 'Unknown',
-            'dialogue': []
-        }
-
-    # Collect all text chunks
-    text_chunks = []
-    current_scene = "Unknown"
-
-    for element in start_point.find_all_next(['p', 'b']):
-        raw_text = clean_text(element.get_text())
-
-        if not raw_text:
-            continue
-
-        # Check if it's a scene marker
-        if (element.name == 'b' and len(raw_text) < 50 and
-                any(word in raw_text.lower() for word in ['teaser', 'act', 'scene', 'fade', 'cut'])):
-            current_scene = raw_text
-            continue
-
-        text_chunks.append({
-            'text': raw_text,
-            'scene': current_scene,
-            'is_problematic': is_problematic_chunk(raw_text)
-        })
-
-    # Process chunks
-    dialogue_data = []
-    llm_calls = 0
-    max_llm_calls = 50  # Limit to control costs
-
-    for chunk in text_chunks:
-        if chunk['is_problematic'] and llm_calls < max_llm_calls:
-            print(f"🤖 LLM cleaning: {chunk['text'][:50]}...")
-            llm_calls += 1
-
-            # Use LLM to clean
-            llm_dialogue = llm_clean_chunk(chunk['text'], episode_title)
-
-            for line in llm_dialogue:
-                if 'character' in line and 'dialogue' in line:
-                    character = line['character'].upper()
-                    if is_valid_character(character):
-                        dialogue_data.append({
-                            'episode_num': episode_number,
-                            'episode_title': episode_title,
-                            'scene': chunk['scene'],
-                            'character': character,
-                            'dialogue': line['dialogue'],
-                            'is_voiceover': 'VOICEOVER' in character
-                        })
-
-            # Rate limiting
-            time.sleep(0.1)  # Small delay between API calls
-
-        else:
-            # Use regex parsing for clean chunks
-            dialogue_match = re.match(r'^([A-Za-z][A-Za-z\s]+?):\s*(.+)', chunk['text'])
-            if dialogue_match:
-                character = dialogue_match.group(1).strip().upper()
-                if is_valid_character(character):
-                    raw_dialogue = dialogue_match.group(2).strip()
-                    dialogue = clean_dialogue(raw_dialogue)
-
-                    if dialogue:
-                        dialogue_data.append({
-                            'episode_num': episode_number,
-                            'episode_title': episode_title,
-                            'scene': chunk['scene'],
-                            'character': character,
-                            'dialogue': dialogue,
-                            'is_voiceover': 'VOICEOVER' in character
-                        })
-
-    print(f"📊 Episode {episode_number}: {len(dialogue_data)} lines, {llm_calls} LLM calls")
-
-    return {
-        'episode_num': episode_number,
-        'episode_title': episode_title,
-        'writer': 'Unknown',  # You can add this back if needed
-        'air_date': 'Unknown',
-        'dialogue': dialogue_data
-    }
-
-
-def parse_all_transcripts_hybrid(transcript_dir, test_files=None):
-    """Parse all transcripts using hybrid approach"""
-
-    all_episodes = []
-    all_dialogues = []
-
-    html_files = list(Path(transcript_dir).glob("*.html"))
-
-    if test_files:
-        html_files = [f for f in html_files if f.name in test_files]
-
-    print(f"🚀 Processing {len(html_files)} files with hybrid parsing...")
-
-    total_llm_calls = 0
-
-    for i, html_file in enumerate(html_files):
-        print(f"\n📄 Processing {html_file.name} ({i + 1}/{len(html_files)})...")
-
-        try:
-            episode_data = hybrid_parse_transcript(html_file)
-
-            # Add episode metadata
-            all_episodes.append({
-                'filename': html_file.name,
-                'episode_num': episode_data['episode_num'],
-                'episode_title': episode_data['episode_title'],
-                'writer': episode_data['writer'],
-                'air_date': episode_data['air_date'],
-                'total_lines': len(episode_data['dialogue'])
-            })
-
-            # Add all dialogue
-            all_dialogues.extend(episode_data['dialogue'])
-
-        except Exception as e:
-            print(f"❌ Error processing {html_file.name}: {e}")
-            continue
-
-    episodes_df = pd.DataFrame(all_episodes)
-    dialogues_df = pd.DataFrame(all_dialogues)
-
-    print(f"\n✅ Hybrid parsing complete!")
-    print(f"📊 Episodes: {len(episodes_df)}")
-    print(f"💬 Total dialogue lines: {len(dialogues_df)}")
-    print(f"🤖 Estimated API cost: ~${total_llm_calls * 0.001:.2f}")  # Rough estimate
-
-    return episodes_df, dialogues_df
-
-
 def is_valid_character(character_name):
     """Check if a character name is in our approved list"""
     # Clean up the character name
@@ -374,7 +135,6 @@ def is_valid_character(character_name):
     cleaned = re.sub(r'\s+(VOICEOVER|VO)$', '', cleaned)
 
     return cleaned in BUFFY_CHARACTERS
-
 
 def clean_text(text):
     """Clean text of HTML entities and normalize whitespace"""
@@ -428,42 +188,6 @@ def parse_dialogue_block(element, episode_num, episode_title):
                     })
     return dialogue_lines
 
-def diagnose_parsing_issues(transcript_dir):
-    """Debug what's going wrong with parsing"""
-    html_files = list(Path(transcript_dir).glob("*.html"))
-
-    for html_file in html_files[:5]:  # Test first 5 files
-        print(f"\n=== DIAGNOSING {html_file.name} ===")
-
-        with open(html_file, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-
-        soup = BeautifulSoup(content, 'html.parser')
-
-        # Check if we're finding the start point correctly
-        hrs = soup.find_all('hr')
-        print(f"Found {len(hrs)} <hr> tags")
-
-        if len(hrs) >= 2:
-            start_point = hrs[1]
-            print("Using second <hr> as start point")
-        else:
-            start_point = soup.find('blockquote')
-            print(f"Using blockquote as start point: {start_point is not None}")
-
-        if start_point:
-            # Count different element types after start point
-            p_tags = start_point.find_all_next('p')
-            b_tags = start_point.find_all_next('b')
-            print(f"Found {len(p_tags)} <p> tags and {len(b_tags)} <b> tags after start point")
-
-            # Sample some <p> tag content
-            for i, p in enumerate(p_tags[:3]):
-                text = clean_text(p.get_text())
-                print(f"P tag {i}: '{text[:100]}...'")
-        else:
-            print("ERROR: No start point found!")
-
 def parse_buffy_transcript(html_file):
     with open(html_file, 'r', encoding='utf-8', errors='ignore') as f:
         content = f.read()
@@ -483,7 +207,7 @@ def parse_buffy_transcript(html_file):
 
     writer, airdate = "Unknown", "Unknown"
 
-    writer_elements = soup.find_all(text=re.compile(f"Written by", re.IGNORECASE))
+    writer_elements = soup.find_all(string=re.compile(f"Written by", re.IGNORECASE))
     if writer_elements:
         writer_line = writer_elements[0].strip()
         writer_match = re.search(r'Written by:?\s*(.+)', writer_line)
@@ -507,7 +231,6 @@ def parse_buffy_transcript(html_file):
     if start_point.name == 'blockquote':
         dialogue_data = parse_blockquote_format(start_point, episode_number, episode_title)
     elif start_point.name == 'pre':
-        # Handle pre formats
         dialogue_data = parse_pre_format(start_point, episode_number, episode_title)
     else:
         current_scene = "Unknown"
@@ -516,7 +239,6 @@ def parse_buffy_transcript(html_file):
                 # Handle <p> blocks that might contain multiple dialogue lines
                 dialogue_lines = parse_dialogue_block(element, episode_number, episode_title)
                 if dialogue_lines:
-                    text_found = True
                     for line_data in dialogue_lines:
                         line_data['scene'] = current_scene
                         dialogue_data.append(line_data)
@@ -547,9 +269,9 @@ def parse_buffy_transcript(html_file):
             elif element.name == 'b':
                 # Scene markers
                 text = clean_text(element.get_text())
+                print(text)
                 if text and len(text) < 50 and any(
                         word in text.lower() for word in ['teaser', 'act', 'scene', 'fade', 'cut']):
-                    text_found = True
                     current_scene = text
                     # print(f"DEBUG: Scene change to: '{current_scene}'")
 
@@ -595,7 +317,7 @@ def parse_all_transcripts(html_files, sublist=None):
     html_files = list(html_files.glob('*.html')) + list(html_files.glob('*.htm'))
     print(f"Found {len(html_files)} HTML files to process...")
 
-    for html_file in html_files:
+    for html_file in sorted(html_files):
         if sublist and html_file.name not in sublist.values():
             continue
         print(f"Parsing {html_file.name}...")
@@ -633,29 +355,31 @@ def parse_all_transcripts(html_files, sublist=None):
 
 
 def find_content_start(soup):
-    """Find where the actual transcript content starts"""
+    """Find where the actual transcript content starts--order of if statements matters"""
     pre_tag = soup.find('pre')
     if pre_tag:
         print("Found <pre> tag - using as start point")
         return pre_tag
 
-    # Strategy 2: Look for <hr> tags (existing logic)
+    blockquote = soup.find('blockquote')
+    if blockquote:
+        # Make sure it has actual dialogue content, not just metadata
+        blockquote_text = blockquote.get_text()
+        if len(blockquote_text) > 1000:  # Substantial content
+            print("Using blockquote as start point (Season 6/7)")
+            return blockquote
+
+    # Look for <hr> tags
     hrs = soup.find_all('hr')
     if len(hrs) >= 2:
         # Try each <hr> tag and see which one has content after it
         for i, hr in enumerate(hrs):
-            test_content = hr.find_all_next(['p', 'b'])
-            if len(test_content) > 10:  # Arbitrary threshold
-                print(f"Using <hr> tag {i} as start point ({len(test_content)} elements after)")
+            text_content = hr.find_all_next(['p', 'b'])
+            if len(text_content) > 10:  # Arbitrary threshold
+                print(f"Using <hr> tag {i} as start point ({len(text_content)} elements after)")
                 return hr
 
-    # Strategy 3: Look for blockquote
-    blockquote = soup.find('blockquote')
-    if blockquote:
-        print("Using blockquote as start point")
-        return blockquote
-
-    # Strategy 4: Look for specific text patterns that indicate start of transcript
+    # Look for specific text patterns that indicate start of transcript
     transcript_markers = [
         'Teaser', 'TEASER', 'Act One', 'ACT ONE', 'Previously', 'PREVIOUSLY',
         'Episode begins', 'Episode opens', 'Open on', 'Fade in', "Prologue"
@@ -681,39 +405,84 @@ def find_content_start(soup):
     return None
 
 
-def explore_data():
-    """
-    Quick data exploration to verify parsing worked correctly.
-    """
-    episodes_df = pd.read_csv('episodes.csv')
-    dialogue_df = pd.read_csv('dialogues.csv')
-
-    low_line_episodes = episodes_df[episodes_df['total_lines'] < 1000]
-    subset_dialogue = dialogue_df[dialogue_df['episode_num'].isin(low_line_episodes['episode_num'])]
-
-    print(f"Episodes with < 1000 lines: {len(low_line_episodes)}")
-    print(f"Dialogue lines from those episodes: {len(subset_dialogue)}")
-
-    # Save the subset
-    subset_dialogue.to_csv('low_line_episodes_dialogue.csv', index=False)
-    # Check if it's specific seasons or patterns
-    bins = [0, 12, 34, 56, 78, 99, 122, 144]
+def clean_data(episodes_df, dialogue_df):
+    # Split up episodes by season
+    bins = [0, 12, 34, 56, 78, 100, 122, 144]
     labels = [1, 2, 3, 4, 5, 6, 7]
 
-    low_line_episodes['season'] = pd.cut(
-        low_line_episodes['episode_num'].astype(int),
+    episodes_df['season'] = pd.cut(
+        episodes_df['episode_num'].astype(int),
         bins=bins,
         labels=labels,
         include_lowest=True
     )
-    print("\n=== BY SEASON ===")
-    print(low_line_episodes.groupby('season')['total_lines'].agg(['count', 'mean']))
 
-    # Let's see what's going on with these low-line episodes
-    print("=== LOW LINE EPISODES ANALYSIS ===")
-    print(low_line_episodes[['episode_title', 'total_lines']].sort_values('total_lines'))
+    dialogue_df['season'] = pd.cut(
+        dialogue_df['episode_num'].astype(int),
+        bins=bins,
+        labels=labels,
+        include_lowest=True
+    )
+
+    # Seasons 6 and 7 over-parse--instead of battling html formatting, just dedeupe
+    print(f"Before deduplication: {len(dialogue_df)} lines")
+    dialogue_df_clean = dialogue_df.drop_duplicates(subset=['episode_num', 'character', 'dialogue'])
+    print(f"After deduplication: {len(dialogue_df_clean)} lines")
+    dialogue_df_clean.to_csv('dialogue_cleaned.csv', index=False)
+
+    new_episode_counts = dialogue_df.groupby('episode_num').size().reset_index(name='total_lines')
+
+    # Update the episodes dataframe
+    episodes_df = episodes_df.merge(
+        new_episode_counts[['episode_num', 'total_lines']],
+        on='episode_num',
+        how='left',
+        suffixes=('_old', '')
+    )
+
+    # Fill any missing counts with 0 (episodes with no dialogue parsed)
+    episodes_df['total_lines'] = episodes_df['total_lines'].fillna(0).astype(int)
+
+    # Drop the old column
+    episodes_df = episodes_df.drop('total_lines_old', axis=1)
+
+    # Recalculate seasons and check the results
+    episodes_df['episode_num_int'] = episodes_df['episode_num'].astype(int)
+    episodes_df['season'] = pd.cut(
+        episodes_df['episode_num_int'],
+        bins=[0, 12, 34, 56, 78, 99, 122, 144],
+        labels=[1, 2, 3, 4, 5, 6, 7]
+    )
+    episodes_df.to_csv('episodes_cleaned.csv', index=False)
+
+
+def explore_data():
+    dialogue_df = pd.read_csv('all_dialogue.csv')
+    episodes_df = pd.read_csv('episodes_cleaned.csv')
+
+
+    #
+    # print("\n=== AFTER CLEANING ===")
+    # episodes_summary = dialogue_df_clean.groupby('episode_num').size().reset_index(name='total_lines')
+    # episodes_summary['season'] = pd.cut(episodes_summary['episode_num'].astype(int),
+    #                                     bins=[0, 12, 34, 56, 78, 99, 122, 144], labels=[1, 2, 3, 4, 5, 6, 7])
+    #
+    # print(episodes_summary.groupby('season')['total_lines'].agg(['count', 'mean']))
+    #
+    # low_line_episodes = episodes_df[episodes_df['total_lines'] < 1000]
+    # subset_dialogue = dialogue_df[dialogue_df['episode_num'].isin(low_line_episodes['episode_num'])]
+    #
+    # print(f"Episodes with < 1000 lines: {len(low_line_episodes)}")
+    # print(f"Dialogue lines from those episodes: {len(subset_dialogue)}")
+
+
+
+
+    print("\n=== BY SEASON ===")
+    print(episodes_df.groupby('season')['total_lines'].agg(['count', 'mean', 'min', 'max']))
+
     print("=== EPISODE OVERVIEW ===")
-    print(episodes_df.head())
+    print(episodes_df[['episode_title', 'total_lines']].sort_values('total_lines'))
 
     print("\n=== DIALOGUE SAMPLE ===")
     print(dialogue_df.head(10))
@@ -725,49 +494,37 @@ def explore_data():
     print(dialogue_df['scene'].value_counts().head())
 
 
-def debug_single_file(filename):
-    filepath = Path(transcript_dir) / filename
-    print(f"\n=== DEBUGGING {filename} ===")
-
-    episode_data = parse_buffy_transcript(filepath)
-
-    print(f"Episode: {episode_data['episode_title']}")
-    print(f"Dialogue lines found: {len(episode_data['dialogue'])}")
-
-    if len(episode_data['dialogue']) > 0:
-        print("Sample dialogue:")
-        for line in episode_data['dialogue'][:3]:
-            print(f"  {line['character']}: {line['dialogue'][:50]}...")
-    else:
-        print("❌ NO DIALOGUE FOUND!")
-
-    return episode_data
-
-
 if __name__ == "__main__":
-    transcript_dir = Path('/Users/ellynkeith/PycharmProjects/buffybot/transcripts')
+    transcript_dir = Path(Path.cwd() / 'transcripts')
+    episodes_df = pd.read_csv('episodes_cleaned.csv')
+    dialogue_df = pd.read_csv('all_dialogue.csv')
+    # stashed_dialogue_df = pd.read_csv('stash/dialogue_cleaned.csv')
+    # season_6 = stashed_dialogue_df.loc[stashed_dialogue_df['season']==6].drop_duplicates()
+    #
+    # all_dialogue = pd.concat([season_6, dialogue_df], ignore_index=True)
+    # # all_dialogue.sort_values(by='episode_num', inplace=True)
+    # # all_dialogue.drop_duplicates(inplace=True)
+    # clean_data(episodes_df, all_dialogue)
+    # all_dialogue.to_csv('all_dialogue.csv', index=False)
+    explore_data()
+
     # test_files = ["001_trans.html", "013_trans.html", "079_trans.html", "123_trans.html"]
-    # for filename in test_files:
+    # for filename in transcript_dir.iterdir():
     #     if (Path(transcript_dir) / filename).exists():
     #         debug_single_file(filename)
     # Test one file from each problematic season
     test_files = {
-        1: "001_trans.html",  # Or whatever season 1 files look like
-        2: "013_trans.html",
-        5: "079_trans.html",
-        7: "123_trans.html"
+        # 5: "099_trans.html",  # Or whatever season 1 files look like
+        6: "108_trans.html",
+        # 7: "140_trans.html"
     }
 
-    episodes_df, dialogues_df = parse_all_transcripts(transcript_dir, test_files)
+    # episodes_df, dialogues_df = parse_all_transcripts(transcript_dir)
+    # clean_data(episodes_df, dialogues_df)
+    # explore_data()
+
     # episodes_df.to_csv('episodes_new.csv', index=False)
     # dialogues_df.to_csv('dialogues_new.csv', index=False)
-
-    # for season, filename in test_files.items():
-    #     if (Path(transcript_dir) / filename).exists():
-    #         quick_format_check(filename)
-
-    # Test with just a few problematic files first
-    # test_files = ['043_trans.html'] # '068_trans.html', '129_trans.html',
 
 
 

@@ -1,0 +1,1 @@
+Okay, remember, we're not drawing the object, we're drawing the negative space around the object. We just draw the edges of the figure, and then give me a sense of the spaces around, the space in between.
