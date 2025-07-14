@@ -457,8 +457,8 @@ def clean_data(episodes_df, dialogue_df):
 
 
 def explore_data():
-    dialogue_df = pd.read_csv('all_dialogue.csv')
-    episodes_df = pd.read_csv('episodes_cleaned.csv')
+    dialogue_df = pd.read_csv('../data/all_dialogue.csv')
+    episodes_df = pd.read_csv('../data/episodes_cleaned.csv')
 
 
     #
@@ -496,8 +496,8 @@ def explore_data():
 
 if __name__ == "__main__":
     transcript_dir = Path(Path.cwd() / 'transcripts')
-    episodes_df = pd.read_csv('episodes_cleaned.csv')
-    dialogue_df = pd.read_csv('all_dialogue.csv')
+    episodes_df = pd.read_csv('../data/episodes_cleaned.csv')
+    dialogue_df = pd.read_csv('../data/all_dialogue.csv')
     # stashed_dialogue_df = pd.read_csv('stash/dialogue_cleaned.csv')
     # season_6 = stashed_dialogue_df.loc[stashed_dialogue_df['season']==6].drop_duplicates()
     #
