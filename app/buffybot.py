@@ -1,10 +1,17 @@
 import pandas as pd
 import numpy as np
+import ast
 import faiss
 import openai
 from pathlib import Path
-import json
+import os
 from typing import List, Dict, Tuple
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / "data"
+MODEL_DIR = BASE_DIR / "models"
 
 
 class BuffyBot:
@@ -12,8 +19,9 @@ class BuffyBot:
 
     def __init__(self, chunks_file, embeddings_file, index_file):
         self.chunks_df = pd.read_csv(chunks_file)
+        self.chunks_df['characters'] = self.chunks_df['characters'].apply(ast.literal_eval)
         self.embeddings = np.load(embeddings_file)
-        self.index = faiss.read_index(index_file)
+        self.index = faiss.read_index(str(index_file))
 
         # Character personas for consistent responses
         self.character_personas = {
@@ -69,7 +77,7 @@ class BuffyBot:
         """Search for chunks where the specified character appears"""
 
         # Filter chunks to only include this character
-        character_mask = self.chunks_df['characters'].apply(lambda x: character in x)
+        character_mask = self.chunks_df['characters'].apply(lambda x: character.upper() in x)
         character_chunk_indices = self.chunks_df[character_mask].index.tolist()
 
         if not character_chunk_indices:
@@ -157,7 +165,8 @@ Guidelines:
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,  # Some creativity but not too random
-                max_tokens=200  # Keep responses concise
+                max_tokens=100,
+                stop=["\n\n", "Human:", "You:"]
             )
 
             generated_response = response.choices[0].message.content
@@ -170,7 +179,7 @@ Guidelines:
                 'character': character,
                 'chunks_used': len(relevant_chunks),
                 'confidence': float(avg_similarity),
-                'context_episodes': list(set([chunk['episode_num'] for chunk in relevant_chunks]))
+                'context_episodes': list(set([chunk['episode_title'] for chunk in relevant_chunks]))
             }
 
         except Exception as e:
@@ -205,13 +214,13 @@ def test_character_chatbots():
 
     # Initialize the chatbot system
     chatbot = BuffyBot(
-        chunks_file="data/buffy_chunks.csv",
-        embeddings_file="models/buffy_embeddings_fixed.npy",
-        index_file="models/buffy_faiss_index.index"
+        chunks_file=DATA_DIR / "buffy_chunks.csv",
+        embeddings_file=MODEL_DIR / "buffy_embeddings_vectors.npy",
+        index_file=MODEL_DIR / "buffy_faiss_index.index"
     )
 
     # Find available characters
-    print("🎭 Available characters for chatbots:")
+    print("Available characters for chatbots:")
     top_characters = chatbot.get_top_characters()
     for char, count in list(top_characters.items())[:6]:
         print(f"   {char}: {count} conversation chunks")
@@ -236,5 +245,15 @@ def test_character_chatbots():
             print(f"{character}: {result['response']}")
             print(f"Confidence: {result['confidence']:.3f} | Episodes: {result['context_episodes']}")
 
-    if __name__ == "__main__":
-        test_character_chatbots()
+if __name__ == "__main__":
+    buffybot = BuffyBot(
+        chunks_file=DATA_DIR / "buffy_chunks.csv",
+        embeddings_file=MODEL_DIR / "buffy_embeddings_vectors.npy",
+        index_file=MODEL_DIR / "buffy_faiss_index.index"
+    )
+    character = "Buffy"
+    query = "What do you think about AI?"
+    result = buffybot.generate_character_response(character, query)
+    print(f"YOU: {query}\n")
+    print(f"{character}: {result['response']}")
+    print(f"\nConfidence: {result['confidence']:.3f} | Episodes: {result['context_episodes']}")

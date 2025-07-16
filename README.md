@@ -4,10 +4,12 @@ Features
 
 ## Character-Specific Chatbots: Chat with Buffy, Giles, Willow, Xander, and other main characters ##
 - [x] RAG-Powered Responses: Uses actual show dialogue as context for generating authentic responses
-- [ ] Personality Preservation: Each character maintains their unique voice and mannerisms
-- [ ] Semantic Search: Advanced vector search to find relevant dialogue examples
+- [x] Personality Preservation: Each character maintains their unique voice and mannerisms
+- [x] Semantic Search: Advanced vector search to find relevant dialogue examples
+- [x] Episode Context: See which episodes inform each response
+- [ ] Conversational Context: Track conversation history
 - [ ] Interactive Web Interface: Clean Flask-based UI for easy conversations
-- [ ] Episode Context: See which episodes inform each response
+
 
 ## Architecture ##
 User Query → Character-Specific Retrieval → Context + Persona → LLM Generation → Character Response
