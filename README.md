@@ -1,6 +1,5 @@
 # BuffyBot 🧛‍♀️⚔️ #
 An AI-powered chatbot system that lets you have conversations with characters from Buffy the Vampire Slayer. Using Retrieval-Augmented Generation (RAG), each character responds based on their actual dialogue from the show, maintaining their unique personality and speech patterns.
-Features
 
 ## Character-Specific Chatbots: Chat with Buffy, Giles, Willow, Xander, and other main characters ##
 - [x] RAG-Powered Responses: Uses actual show dialogue as context for generating authentic responses
@@ -37,7 +36,7 @@ User Query → Character-Specific Retrieval → Context + Persona → LLM Genera
 ### Web Interface (not yet developed)
 - Flask
 
-## Sample Usage
+## Sample Usage -- in `app/buffybot.py`
 ```
 if __name__ == "__main__":
     buffybot = BuffyBot()
