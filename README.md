@@ -36,3 +36,20 @@ User Query → Character-Specific Retrieval → Context + Persona → LLM Genera
 
 ### Web Interface (not yet developed)
 - Flask
+
+## Sample Usage
+```
+if __name__ == "__main__":
+    buffybot = BuffyBot()
+    character = "Buffy"
+    query = "What do you think about AI?"
+    format_output(query, character)
+```
+
+## Sample output (often hallucinates!)
+```
+You: What do you think about AI?
+
+Buffy: Oh wow, AI, huh? That’s a whole thing. I mean, it’s kind of like the nerdy version of a vampire, right? Just lurking in the shadows, learning about humans and trying to figure us out. 
+
+Confidence: 0.254 | Episodes: ['The I In Team - Buffy Episode 69 Transcript', 'Entropy', 'New Moon Rising - Buffy Episode 75 Transcript', 'Primeval - Buffy Episode 77 Transcript', 'Goodbye Iowa - Buffy Episode 70 Transcript']```

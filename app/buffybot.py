@@ -17,7 +17,11 @@ MODEL_DIR = BASE_DIR / "models"
 class BuffyBot:
     """RAG-powered character-specific chatbot for Buffy characters"""
 
-    def __init__(self, chunks_file, embeddings_file, index_file):
+    def __init__(self,
+                     chunks_file=DATA_DIR / "buffy_chunks.csv",
+                     embeddings_file = MODEL_DIR / "buffy_embeddings_vectors.npy",
+                     index_file = MODEL_DIR / "buffy_faiss_index.index"
+                 ):
         self.chunks_df = pd.read_csv(chunks_file)
         self.chunks_df['characters'] = self.chunks_df['characters'].apply(ast.literal_eval)
         self.embeddings = np.load(embeddings_file)
@@ -245,15 +249,16 @@ def test_character_chatbots():
             print(f"{character}: {result['response']}")
             print(f"Confidence: {result['confidence']:.3f} | Episodes: {result['context_episodes']}")
 
-if __name__ == "__main__":
-    buffybot = BuffyBot(
-        chunks_file=DATA_DIR / "buffy_chunks.csv",
-        embeddings_file=MODEL_DIR / "buffy_embeddings_vectors.npy",
-        index_file=MODEL_DIR / "buffy_faiss_index.index"
-    )
-    character = "Buffy"
-    query = "What do you think about AI?"
+
+def format_output(query, character):
     result = buffybot.generate_character_response(character, query)
-    print(f"YOU: {query}\n")
+    print(f"You: {query}\n")
     print(f"{character}: {result['response']}")
     print(f"\nConfidence: {result['confidence']:.3f} | Episodes: {result['context_episodes']}")
+
+
+if __name__ == "__main__":
+    buffybot = BuffyBot()
+    character = "Buffy"
+    query = "What do you think about AI?"
+    format_output(query, character)
