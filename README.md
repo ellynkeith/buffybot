@@ -11,25 +11,26 @@ Features
 
 ## Architecture ##
 User Query → Character-Specific Retrieval → Context + Persona → LLM Generation → Character Response
-Tech Stack
-##
-Data Processing 
+
+## Tech Stack ##
+### Data Processing 
 - BeautifulSoup
 - Pandas
 - NumPy
 
-Embeddings
+### Embeddings
 - OpenAI text-embedding-3-small
   
-Vector Search
+### Vector Search
 - FAISS for fast similarity search
   
-LLM 
+### LLM 
 - OpenAI GPT-4o-mini for response generation
   
-Storage
+### Storage
 - CSV
 - NumPy arrays
 - pickle
 
-
+### Web Interface (not yet developed)
+- Flask
