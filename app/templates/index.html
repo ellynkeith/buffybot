@@ -1,12 +1,27 @@
+<!-- app/templates/index.html -->
+<!DOCTYPE html>
 <html>
-    <head>
-        <title>Find an Episode</title>
-    </head>
-    <body>
-        <h1>Find an Episode</h1>
-        <form method="post">
-            <p>you should watch {{name}}</p>
-            <input type="submit" name="button" value="Choose an episode">
-        </form>
-    </body>
+<head>
+    <title>BuffyBot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>BuffyBot</h1>
+
+        <!-- Character selection -->
+        <div id="character-select">
+            <!-- Buttons for each character -->
+        </div>
+
+        <!-- Chat area -->
+        <div id="chat-container">
+            <div id="messages"></div>
+            <input type="text" id="message-input" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
 </html>

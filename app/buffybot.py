@@ -3,9 +3,13 @@ import numpy as np
 import ast
 import faiss
 import openai
+import uuid
+import time
 from pathlib import Path
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Optional
+from datetime import datetime, timedelta
+import json
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -20,12 +24,15 @@ class BuffyBot:
     def __init__(self,
                      chunks_file=DATA_DIR / "buffy_chunks.csv",
                      embeddings_file = MODEL_DIR / "buffy_embeddings_vectors.npy",
-                     index_file = MODEL_DIR / "buffy_faiss_index.index"
+                     index_file = MODEL_DIR / "buffy_faiss_index.index",
+                    max_history_length = 5
                  ):
         self.chunks_df = pd.read_csv(chunks_file)
         self.chunks_df['characters'] = self.chunks_df['characters'].apply(ast.literal_eval)
         self.embeddings = np.load(embeddings_file)
         self.index = faiss.read_index(str(index_file))
+        self.max_history_length = max_history_length
+        self.conversations = {}
 
         # Character personas for consistent responses
         self.character_personas = {
@@ -62,6 +69,75 @@ class BuffyBot:
                 'sample_phrases': ['I\'ve done terrible things', 'Buffy...', 'The darkness in me']
             }
         }
+
+    def create_session(self, character: str) -> str:
+        """Create a new conversation session"""
+        session_id = str(uuid.uuid4())
+
+        self.conversations[session_id] = {
+            'character': character,
+            'history': [],
+            'created_at': datetime.now(),
+            'last_activity': datetime.now()
+        }
+
+        return session_id
+
+    def get_session(self, session_id: str) -> Optional[Dict]:
+        """Get conversation session, return None if not found"""
+        return self.conversations.get(session_id)
+
+    def cleanup_old_sessions(self, max_age_hours: int = 24):
+        """Remove sessions older than max_age_hours"""
+        cutoff = datetime.now() - timedelta(hours=max_age_hours)
+
+        expired_sessions = [
+            sid for sid, session in self.conversations.items()
+            if session['last_activity'] < cutoff
+        ]
+
+        for sid in expired_sessions:
+            del self.conversations[sid]
+
+        return len(expired_sessions)
+
+    def add_to_history(self, session_id: str, user_message: str, assistant_response: str):
+        """Add exchange to conversation history"""
+        if session_id not in self.conversations:
+            return False
+
+        history = self.conversations[session_id]['history']
+
+        # Add new exchange
+        history.append({
+            'user': user_message,
+            'assistant': assistant_response,
+            'timestamp': datetime.now().isoformat()
+        })
+
+        # Trim history if too long
+        if len(history) > self.max_history_length:
+            self.conversations[session_id]['history'] = history[-self.max_history_length:]
+
+        # Update last activity
+        self.conversations[session_id]['last_activity'] = datetime.now()
+
+        return True
+
+    def build_conversational_context(self, current_query: str, history: List[Dict]) -> str:
+        """Build search context from current query and conversation history"""
+        if not history:
+            return current_query
+
+        # Include recent user messages for context
+        context_parts = [current_query]
+
+        # Add last 2-3 user questions for broader context
+        for exchange in history[-3:]:
+            context_parts.append(exchange['user'])
+
+        return ' '.join(context_parts)
+
 
     def get_top_characters(self, min_chunks=50):
         """Find characters with enough dialogue for chatbots"""
@@ -114,6 +190,165 @@ class BuffyBot:
             results.append(chunk)
 
         return results
+
+    def build_conversational_prompt(self, character: str, current_query: str,
+                                    relevant_chunks: List[Dict], history: List[Dict]) -> str:
+        """Build prompt that includes conversation history"""
+
+        persona = self.character_personas.get(character, {})
+        personality = persona.get('personality', f'A character named {character} from Buffy the Vampire Slayer')
+        speech_style = persona.get('speech_style', 'Conversational')
+
+        # Build conversation history context
+        conversation_context = ""
+        if history:
+            conversation_context = "\nPrevious conversation:\n"
+            for exchange in history[-3:]:  # Last 3 exchanges for context
+                conversation_context += f"Human: {exchange['user']}\n{character}: {exchange['assistant']}\n"
+            conversation_context += "\n"
+
+        # Build examples from retrieved chunks
+        examples_context = ""
+        if relevant_chunks:
+            context_texts = []
+            for chunk in relevant_chunks:
+                lines = chunk['text'].split('\n')
+                character_lines = [line for line in lines if line.startswith(f"{character}:")]
+                context_texts.extend(character_lines[:3])  # Limit lines per chunk
+
+            if context_texts:
+                examples_context = f"\nExamples of how {character} speaks:\n" + '\n'.join(context_texts[:8])
+
+        # Build the full prompt
+        prompt = f"""You are {character} from Buffy the Vampire Slayer.
+
+Character traits: {personality}
+Speech style: {speech_style}
+{examples_context}
+{conversation_context}
+Now respond to: "{current_query}"
+
+Guidelines:
+- Stay completely in character as {character}
+- Remember and reference previous parts of our conversation when relevant
+- Use {character}'s typical speech patterns and vocabulary
+- Keep responses conversational and natural (2-3 sentences usually)
+- Don't break character or mention that you're an AI
+- If this is continuing a conversation topic, acknowledge that naturally
+- Don't preface with the character's name (ie, instead of 'BUFFY: Nice to talk to you!' return just 'Nice to talk to you!')
+"""
+
+        return prompt
+
+    def chat(self, session_id: str, user_message: str) -> Dict:
+        """Main chat method with conversation memory"""
+
+        # Get session
+        session = self.get_session(session_id)
+        if not session:
+            return {
+                'error': 'Session not found',
+                'session_id': session_id
+            }
+
+        character = session['character']
+        history = session['history']
+
+        try:
+            # Build search context from current query + history
+            search_context = self.build_conversational_context(user_message, history)
+
+            # Get relevant chunks
+            relevant_chunks = self.search_character_chunks(character, search_context, top_k=5)
+
+            # Build conversational prompt
+            prompt = self.build_conversational_prompt(character, user_message, relevant_chunks, history)
+
+            # Generate response
+            response = openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=200
+            )
+
+            assistant_response = response.choices[0].message.content
+
+            # Add to conversation history
+            self.add_to_history(session_id, user_message, assistant_response)
+
+            # Calculate confidence
+            avg_similarity = np.mean(
+                [chunk['similarity_score'] for chunk in relevant_chunks]) if relevant_chunks else 0.0
+
+            return {
+                'response': assistant_response,
+                'character': character,
+                'session_id': session_id,
+                'confidence': float(avg_similarity),
+                'chunks_used': len(relevant_chunks),
+                'context_episodes': list(
+                    set([chunk['episode_title'] for chunk in relevant_chunks])) if relevant_chunks else [],
+                'conversation_length': len(session['history'])
+            }
+
+        except Exception as e:
+            return {
+                'error': f"Error generating response: {str(e)}",
+                'character': character,
+                'session_id': session_id
+            }
+
+    def start_conversation(self, character: str) -> Dict:
+        """Start a new conversation with a character"""
+        character = character.upper()
+        if character not in self.character_personas:
+            return {'error': f'Character {character} not available'}
+
+        session_id = self.create_session(character)
+        greeting = self.character_personas[character].get('greeting', f"Hello! I'm {character.capitalize()}.")
+
+        # Add greeting to history
+        self.add_to_history(session_id, "[CONVERSATION_START]", greeting)
+
+        return {
+            'session_id': session_id,
+            'character': character,
+            'greeting': greeting
+        }
+
+    def get_conversation_history(self, session_id: str) -> List[Dict]:
+        """Get full conversation history for a session"""
+        session = self.get_session(session_id)
+        if not session:
+            return []
+
+        return session['history']
+
+    def reset_conversation(self, session_id: str) -> bool:
+        """Clear conversation history but keep session"""
+        if session_id in self.conversations:
+            self.conversations[session_id]['history'] = []
+            self.conversations[session_id]['last_activity'] = datetime.now()
+            return True
+        return False
+
+    def get_available_characters(self) -> List[str]:
+        """Get list of available characters"""
+        return list(self.character_personas.keys())
+
+    def get_session_info(self, session_id: str) -> Dict:
+        """Get session metadata"""
+        session = self.get_session(session_id)
+        if not session:
+            return {}
+
+        return {
+            'character': session['character'],
+            'conversation_length': len(session['history']),
+            'created_at': session['created_at'].isoformat(),
+            'last_activity': session['last_activity'].isoformat()
+        }
 
     def generate_character_response(self, character: str, query: str, max_context_chunks: int = 5) -> Dict:
         """Generate a response as the specified character using RAG"""
@@ -217,11 +452,7 @@ def test_character_chatbots():
     """Test the character chatbot system"""
 
     # Initialize the chatbot system
-    chatbot = BuffyBot(
-        chunks_file=DATA_DIR / "buffy_chunks.csv",
-        embeddings_file=MODEL_DIR / "buffy_embeddings_vectors.npy",
-        index_file=MODEL_DIR / "buffy_faiss_index.index"
-    )
+    chatbot = BuffyBot()
 
     # Find available characters
     print("Available characters for chatbots:")
@@ -250,9 +481,8 @@ def test_character_chatbots():
             print(f"Confidence: {result['confidence']:.3f} | Episodes: {result['context_episodes']}")
 
 
-def format_output(query, character):
-    result = buffybot.generate_character_response(character, query)
-    print(f"You: {query}\n")
+def format_output(query, character, result):
+    # print(f"You: {query}\n")
     print(f"{character}: {result['response']}")
     print(f"\nConfidence: {result['confidence']:.3f} | Episodes: {result['context_episodes']}")
 
@@ -260,5 +490,22 @@ def format_output(query, character):
 if __name__ == "__main__":
     buffybot = BuffyBot()
     character = "Buffy"
-    query = "What do you think about AI?"
-    format_output(query, character)
+    conversation = buffybot.start_conversation(character)
+    session_id = conversation['session_id']
+
+    test_messages = [
+        "Hi Buffy! How are you doing?",
+        "That sounds tough. What's the hardest part about being the Slayer?",
+        "Do you ever wish you could just be a normal teenager?",
+        "What keeps you going when things get really bad?"
+    ]
+
+    for message in test_messages:
+        print(f"\nYou: {message}")
+        result = buffybot.chat(session_id, message)
+
+        if 'error' in result:
+            print(f"Error: {result['error']}")
+        else:
+            format_output(message, character, result)
+
