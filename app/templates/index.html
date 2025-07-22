@@ -1,27 +1,58 @@
-<!-- app/templates/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BuffyBot</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Buffy Bot</title>
+    <style>
+        textarea {
+            width: 300px;
+            resize: vertical;
+            font-family: Arial, sans-serif;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>BuffyBot</h1>
+    <h1>Chat with Buffy Characters</h1>
 
-        <!-- Character selection -->
-        <div id="character-select">
-            <!-- Buttons for each character -->
-        </div>
+    <div id="chat-history"></div>
 
-        <!-- Chat area -->
-        <div id="chat-container">
-            <div id="messages"></div>
-            <input type="text" id="message-input" placeholder="Type a message...">
-            <button onclick="sendMessage()">Send</button>
-        </div>
-    </div>
+    <form id="chat-form">
+        <select id="character">
+            <option value="Buffy">Buffy</option>
+            <option value="Willow">Willow</option>
+            <option value="Xander">Xander</option>
+            <option value="Giles">Giles</option>
+            <option value="Spike">Spike</option>
+        </select>
+        <textarea id="message" placeholder="Type your message..." rows="3"></textarea>
+        <button type="submit">Send</button>
+    </form>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        document.getElementById('chat-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const message = document.getElementById('message').value;
+            const character = document.getElementById('character').value;
+
+            // Add user message to chat
+            const chatHistory = document.getElementById('chat-history');
+            chatHistory.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+
+            // Send to backend
+            fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: message, character: character})
+            })
+            .then(response => response.json())
+            .then(
+            data => {
+                console.log(data);
+                chatHistory.innerHTML += `<p><strong>${character}:</strong> ${data.response.response}</p>`;
+            });
+
+            document.getElementById('message').value = '';
+        });
+    </script>
 </body>
 </html>

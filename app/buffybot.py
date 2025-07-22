@@ -299,7 +299,7 @@ Guidelines:
                 'session_id': session_id
             }
 
-    def start_conversation(self, character: str) -> Dict:
+    def start_conversation(self, character: str, conversation_context=None) -> Dict:
         """Start a new conversation with a character"""
         character = character.upper()
         if character not in self.character_personas:
@@ -493,14 +493,8 @@ if __name__ == "__main__":
     conversation = buffybot.start_conversation(character)
     session_id = conversation['session_id']
 
-    test_messages = [
-        "Hi Buffy! How are you doing?",
-        "That sounds tough. What's the hardest part about being the Slayer?",
-        "Do you ever wish you could just be a normal teenager?",
-        "What keeps you going when things get really bad?"
-    ]
-
-    for message in test_messages:
+    message = input('Say hello: ')
+    while message != 'bye':
         print(f"\nYou: {message}")
         result = buffybot.chat(session_id, message)
 
@@ -508,4 +502,5 @@ if __name__ == "__main__":
             print(f"Error: {result['error']}")
         else:
             format_output(message, character, result)
+        message = input()
 
