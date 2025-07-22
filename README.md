@@ -5,9 +5,10 @@ An AI-powered chatbot system that lets you have conversations with characters fr
 - [x] RAG-Powered Responses: Uses actual show dialogue as context for generating authentic responses
 - [x] Personality Preservation: Each character maintains their unique voice and mannerisms
 - [x] Semantic Search: Advanced vector search to find relevant dialogue examples
+- [x] Cross-Character Memory: Switch between characters while maintaining conversation context
 - [x] Episode Context: See which episodes inform each response
-- [ ] Conversational Context: Track conversation history
-- [ ] Interactive Web Interface: Clean Flask-based UI for easy conversations
+- [x] Conversational Context: Track conversation history
+- [x] Interactive Web Interface: Clean Flask-based UI for easy conversations
 
 
 ## Architecture ##
@@ -33,8 +34,10 @@ User Query → Character-Specific Retrieval → Context + Persona → LLM Genera
 - NumPy arrays
 - pickle
 
-### Web Interface (not yet developed)
-- Flask
+**Web Interface**
+* Flask (backend/routing)
+* HTML/CSS (90s gothic UI styling)
+* JavaScript (real-time chat interactions)
 
 ## Sample Usage -- in `app/buffybot.py`
 ```
