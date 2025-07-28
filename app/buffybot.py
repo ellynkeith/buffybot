@@ -10,8 +10,13 @@ import os
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 import json
+from dotenv import load_dotenv
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+load_dotenv()
+
+client = openai.OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY")
+)
 
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -265,11 +270,11 @@ Guidelines:
             prompt = self.build_conversational_prompt(character, user_message, relevant_chunks, history)
 
             # Generate response
-            response = openai.chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=200
+                temperature=1.0,
+                max_tokens=150
             )
 
             assistant_response = response.choices[0].message.content
@@ -286,9 +291,9 @@ Guidelines:
                 'character': character,
                 'session_id': session_id,
                 'confidence': float(avg_similarity),
-                'chunks_used': len(relevant_chunks),
-                'context_episodes': list(
-                    set([chunk['episode_title'] for chunk in relevant_chunks])) if relevant_chunks else [],
+                'chunks_used': relevant_chunks,
+                # 'context_episodes': list(
+                #     set([chunk['episode_title'] for chunk in relevant_chunks])) if relevant_chunks else [],
                 'conversation_length': len(session['history'])
             }
 
@@ -497,6 +502,9 @@ if __name__ == "__main__":
     while message != 'bye':
         print(f"\nYou: {message}")
         result = buffybot.chat(session_id, message)
+
+        for k, v in list(result.items()):
+            print(f"{k}: {v}")
 
         if 'error' in result:
             print(f"Error: {result['error']}")

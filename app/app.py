@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify, session
-from buffybot import BuffyBot
+from buffybot import BuffyBot, BASE_DIR
 from dotenv import load_dotenv
 import os
+import pandas as pd
 
 load_dotenv()
 
@@ -14,6 +15,26 @@ buffybot = BuffyBot()
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    data = request.get_json()
+    feedback_data_path = BASE_DIR / 'feedback/feedback_data.csv'
+
+    if not os.path.exists(feedback_data_path):
+        feedback_df = pd.DataFrame(columns=list(data.keys()))
+    else:
+        feedback_df = pd.read_csv(feedback_data_path)
+
+    try:
+        new_row = pd.DataFrame([data])
+        feedback_df = pd.concat([feedback_df, new_row], ignore_index=True)
+        feedback_df.to_csv(feedback_data_path, index=False)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/chat', methods=['POST'])
@@ -61,6 +82,10 @@ def chat():
 
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    is_production = 'PORT' in os.environ
+    app.run(
+        host='0.0.0.0' if is_production else '127.0.0.1',
+        port=port,
+        debug=not is_production
+    )

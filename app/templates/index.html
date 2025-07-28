@@ -75,6 +75,7 @@
         .bot-message {
             background: rgba(75, 0, 130, 0.2);
             border-left: 4px solid #9370db;
+            position: relative;
         }
 
         .message strong {
@@ -209,6 +210,115 @@
             75% { content: '...'; }
             100% { content: ''; }
         }
+
+        .footer-info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .notice {
+            background: rgba(139, 69, 19, 0.2);
+            border: 1px solid #8b4513;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: #d4af37;
+            font-family: 'Special Elite', cursive;
+        }
+
+        .github-link {
+            color: #b8860b;
+            font-style: italic;
+        }
+
+        .github-link a {
+            color: #d4af37;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .github-link a:hover {
+            color: #9370db;
+            text-decoration: underline;
+        }
+
+        /* Feedback buttons */
+        .feedback-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .feedback-btn {
+            background: none;
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            padding: 5px 10px;
+            color: #d4af37;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .feedback-btn:hover {
+            background: rgba(139, 69, 19, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .feedback-btn.selected {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+        }
+
+        .feedback-text {
+            margin-top: 10px;
+            width: 100%;
+            background: #2c1810;
+            color: #e6d7c3;
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            padding: 8px;
+            font-family: 'Special Elite', cursive;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+            display: none;
+        }
+
+        .feedback-text:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+
+        .feedback-text::placeholder {
+            color: #8b7355;
+            font-style: italic;
+        }
+
+        .feedback-submit {
+            margin-top: 8px;
+            background: linear-gradient(135deg, #8b4513 0%, #d4af37 100%);
+            color: #1a0a2e;
+            border: none;
+            border-radius: 3px;
+            padding: 6px 12px;
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: none;
+        }
+
+        .feedback-submit:hover {
+            background: linear-gradient(135deg, #d4af37 0%, #8b4513 100%);
+        }
     </style>
 </head>
 <body>
@@ -229,6 +339,13 @@
             <textarea id="message" placeholder="What's the sitch? Type your message here..."></textarea>
             <button type="submit">Send</button>
         </form>
+
+        <div class="footer-info">
+            <p class="notice">⚠️ <strong>First Response Delay:</strong> The server may need a moment to wake up for your first message. Please be patient!</p>
+            <p class="github-link">
+                📚 <a href="https://github.com/ellynkeith/buffybot" target="_blank">View Source Code on GitHub</a>
+            </p>
+        </div>
     </div>
 
     <script>
@@ -280,7 +397,20 @@
                 if (data.error) {
                     botMessageDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
                 } else {
-                    botMessageDiv.innerHTML = `<strong>${character}:</strong> ${data.response.response}`;
+                    botMessageDiv.innerHTML = `
+                        <strong>${character}:</strong> ${data.response.response}
+                        <div class="feedback-buttons">
+                            <button class="feedback-btn" data-rating="up">
+                                👍 <span>Good Response</span>
+                            </button>
+                            <button class="feedback-btn" data-rating="down">
+                                👎 <span>Bad Response</span>
+                            </button>
+                        </div>
+                        <textarea class="feedback-text" placeholder="What could be improved? (optional)"></textarea>
+                        <button class="feedback-submit">Submit Feedback</button>
+                    `;
+                     setupFeedbackButtons(botMessageDiv, message, character, data.response.response);
                 }
 
                 chatHistory.appendChild(botMessageDiv);
@@ -296,6 +426,66 @@
         });
 
         // Allow Enter to submit (but Shift+Enter for new line)
+        function setupFeedbackButtons(messageDiv, userMessage, character, botResponse) {
+            const feedbackButtons = messageDiv.querySelectorAll('.feedback-btn');
+            const feedbackText = messageDiv.querySelector('.feedback-text');
+            const feedbackSubmit = messageDiv.querySelector('.feedback-submit');
+            let selectedRating = null;
+
+            feedbackButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove selected class from all buttons
+                    feedbackButtons.forEach(b => b.classList.remove('selected'));
+
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+                    selectedRating = this.dataset.rating;
+
+                    // Show feedback text and submit button
+                    feedbackText.style.display = 'block';
+                    feedbackSubmit.style.display = 'inline-block';
+                });
+            });
+
+            feedbackSubmit.addEventListener('click', function() {
+                if (!selectedRating) return;
+
+                const feedbackTextValue = feedbackText.value.trim();
+
+                // Send feedback to backend
+                fetch('/feedback', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_message: userMessage,
+                        character: character,
+                        bot_response: botResponse,
+                        rating: selectedRating,
+                        feedback_text: feedbackTextValue
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Replace with thank you message
+                    const thankYouDiv = document.createElement('div');
+                    thankYouDiv.style.marginTop = '10px';
+                    thankYouDiv.style.color = '#9370db';
+                    thankYouDiv.style.fontStyle = 'italic';
+                    thankYouDiv.innerHTML = '✨ Thanks for the feedback!';
+
+                    // Hide feedback elements
+                    feedbackButtons.forEach(btn => btn.style.display = 'none');
+                    feedbackText.style.display = 'none';
+                    feedbackSubmit.style.display = 'none';
+
+                    // Add thank you message
+                    messageDiv.appendChild(thankYouDiv);
+                })
+                .catch(error => {
+                    console.error('Feedback submission error:', error);
+                });
+            });
+        }
         document.getElementById('message').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
