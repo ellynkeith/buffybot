@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, send_file
 from buffybot import BuffyBot, BASE_DIR
+from datetime import datetime
 from dotenv import load_dotenv
 import os
 import pandas as pd
@@ -9,6 +10,8 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
 
+FEEDBACK_DATA_PATH = BASE_DIR / 'feedback/feedback_data.csv'
+
 # Initialize your bot
 buffybot = BuffyBot()
 
@@ -17,24 +20,38 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/download-feedback')
+def download_feedback():
+    if not os.path.exists(FEEDBACK_DATA_PATH):
+        return "No feedback data found yet", 404
+
+    password = request.args.get('password')
+    if password != 'buffybot2025':
+        return "Access denied", 403
+
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    download_name = f'buffy_feedback_{date_str}.csv'
+
+    return send_file(FEEDBACK_DATA_PATH, as_attachment=True, download_name=download_name)
+
+
 @app.route('/feedback', methods=['POST'])
 def feedback():
     data = request.get_json()
-    feedback_data_path = BASE_DIR / 'feedback/feedback_data.csv'
-
-    if not os.path.exists(feedback_data_path):
+    if not os.path.exists(FEEDBACK_DATA_PATH):
         feedback_df = pd.DataFrame(columns=list(data.keys()))
     else:
-        feedback_df = pd.read_csv(feedback_data_path)
+        feedback_df = pd.read_csv(FEEDBACK_DATA_PATH)
 
     try:
         new_row = pd.DataFrame([data])
         feedback_df = pd.concat([feedback_df, new_row], ignore_index=True)
-        feedback_df.to_csv(feedback_data_path, index=False)
+        feedback_df.to_csv(FEEDBACK_DATA_PATH, index=False)
+
         return jsonify({'status': 'success'})
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 
 @app.route('/chat', methods=['POST'])
